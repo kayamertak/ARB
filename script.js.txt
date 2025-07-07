@@ -1,0 +1,68 @@
+let scene, camera, renderer, model;
+const parts = [];
+
+init();
+animate();
+
+function init() {
+  // Scene setup
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x111111);
+
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 0.5, 3);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const light = new THREE.HemisphereLight(0xffffff, 0x222222, 1.2);
+  light.position.set(0, 2, 1);
+  scene.add(light);
+
+  // Load GLB
+  const loader = new THREE.GLTFLoader();
+  loader.load('models/feather_m4_exploded.glb', gltf => {
+    model = gltf.scene;
+    scene.add(model);
+
+    model.traverse(child => {
+      if (child.isMesh) {
+        child.userData.originalPos = child.position.clone();
+        parts.push(child);
+      }
+    });
+
+    setupScrollAnimation();
+  });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+}
+
+function setupScrollAnimation() {
+  gsap.registerPlugin(ScrollTrigger);
+
+  parts.forEach((part, i) => {
+    const offset = (i % 2 === 0 ? 1 : -1) * 0.5;
+    gsap.to(part.position, {
+      x: part.userData.originalPos.x + offset,
+      y: part.userData.originalPos.y + i * 0.02,
+      z: part.userData.originalPos.z + offset,
+      scrollTrigger: {
+        trigger: document.body,
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: true
+      }
+    });
+  });
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
